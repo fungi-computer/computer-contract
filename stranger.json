@@ -1,0 +1,61 @@
+{
+  "expectedTarballFiles": [
+    "package/LICENSE",
+    "package/README.md",
+    "package/dist/index.d.ts",
+    "package/dist/index.js",
+    "package/docs/api/README.md",
+    "package/package.json"
+  ],
+  "localDependencies": ["../cairn", "../knapsack"],
+  "runtimeFixture": "test/stranger/runtime.mjs",
+  "typechecks": [
+    {
+      "fixture": "test/stranger/consumer.mts"
+    }
+  ],
+  "docs": {
+    "sigil": "list",
+    "home": {
+      "lead": "Decode and validate one Fungi Computer's operations without the Computer host.",
+      "example": {
+        "file": "home.ts",
+        "title": "Decode a path and mint a request id",
+        "caption": "Parse a Workspace path through the shared schema and mint an operation request id."
+      },
+      "ladder": {
+        "start": [
+          {
+            "title": "Quickstart",
+            "href": "/quickstart/",
+            "description": "Decode a path and mint a request id."
+          }
+        ],
+        "tasks": [
+          {
+            "title": "Core concepts",
+            "href": "/concepts/",
+            "description": "Operation schemas, request identifiers and backend ids."
+          }
+        ],
+        "reference": [
+          {
+            "title": "API reference",
+            "href": "/api/",
+            "description": "Browse every exported schema and type."
+          },
+          {
+            "title": "Install",
+            "href": "/install/",
+            "description": "The single entrypoint and its dependencies."
+          },
+          {
+            "title": "Status and limits",
+            "href": "/status/",
+            "description": "Bounds, errors and license."
+          }
+        ]
+      }
+    }
+  }
+}
