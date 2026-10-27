@@ -1,6 +1,6 @@
 {
   "name": "@fungi.computer/computer-contract",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "author": "Levi <levi@technomancy.dev>",
   "description": "Wire contract for one Fungi Computer's operations: discovery, files, commands, processes and ports",
   "type": "module",
