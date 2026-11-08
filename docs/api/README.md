@@ -1637,6 +1637,97 @@ The processes started on this Computer.
 
 ---
 
+### maximumProcessLogLines
+
+```ts
+const maximumProcessLogLines: 200 = 200;
+```
+
+The most output lines one process-logs reply carries.
+
+---
+
+### maximumProcessLogLineCharacters
+
+```ts
+const maximumProcessLogLineCharacters: 2000 = 2_000;
+```
+
+The most characters one retained output line keeps.
+
+---
+
+### processLogsInputSchema
+
+```ts
+const processLogsInputSchema: ZodObject<
+  {
+    id: ZodLazy<
+      ZodString &
+        ZodType<
+          CairnId<"computer-process", "process", 1>,
+          string,
+          $ZodTypeInternals<CairnId<"computer-process", "process", 1>, string>
+        >
+    >;
+    lines: ZodOptional<ZodNumber>;
+  },
+  $strict
+>;
+```
+
+Asks for the retained tail of one process's output.
+
+---
+
+### processLogsOutputSchema
+
+```ts
+const processLogsOutputSchema: ZodObject<
+  {
+    process: ZodObject<
+      {
+        id: ZodLazy<
+          ZodString &
+            ZodType<
+              CairnId<"computer-process", "process", 1>,
+              string,
+              $ZodTypeInternals<
+                CairnId<"computer-process", "process", 1>,
+                string
+              >
+            >
+        >;
+        port: ZodNullable<ZodLazy<ZodNumber>>;
+        command: ZodString;
+        cwd: ZodNullable<ZodString>;
+        state: ZodEnum<{
+          running: "running";
+          exited: "exited";
+          uncertain: "uncertain";
+        }>;
+        exitCode: ZodNullable<ZodNumber>;
+        sync: ZodEnum<{
+          synced: "synced";
+          pending: "pending";
+          unknown: "unknown";
+        }>;
+        startedAt: ZodNumber;
+        endedAt: ZodNullable<ZodNumber>;
+      },
+      $strict
+    >;
+    lines: ZodArray<ZodString>;
+    truncated: ZodBoolean;
+  },
+  $strict
+>;
+```
+
+The last output lines a process wrote, with its record for state and exit code.
+
+---
+
 ### processKillOutputSchema
 
 ```ts

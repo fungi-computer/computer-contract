@@ -1,5 +1,17 @@
 # @fungi.computer/computer-contract
 
+## 0.1.0
+
+### Minor Changes
+
+- Changes since 0.0.13:
+
+  - feat(computer): retain process output and serve the last lines
+
+### Patch Changes
+
+- @fungi.computer/knapsack@0.4.9
+
 ## 0.0.13
 
 ### Patch Changes

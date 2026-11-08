@@ -743,6 +743,28 @@ export const processListOutputSchema = z.strictObject({
   /** Process records, at most `maximumProcessRecords`. */
   processes: z.array(computerProcessSchema).max(maximumProcessRecords),
 });
+/** The most output lines one process-logs reply carries. */
+export const maximumProcessLogLines = 200;
+/** The most characters one retained output line keeps. */
+export const maximumProcessLogLineCharacters = 2_000;
+/** Asks for the retained tail of one process's output. */
+export const processLogsInputSchema = z.strictObject({
+  /** The process to read. */
+  id: computerProcessIdSchema,
+  /** The most recent lines wanted; `maximumProcessLogLines` when omitted. */
+  lines: z.number().int().min(1).max(maximumProcessLogLines).optional(),
+});
+/** The last output lines a process wrote, with its record for state and exit code. */
+export const processLogsOutputSchema = z.strictObject({
+  /** The process record: `state` and `exitCode` say whether it finished. */
+  process: computerProcessSchema,
+  /** Most recent stdout and stderr lines, oldest first. */
+  lines: z
+    .array(z.string().max(maximumProcessLogLineCharacters))
+    .max(maximumProcessLogLines),
+  /** True when older output was dropped to stay within the retained bound. */
+  truncated: z.boolean(),
+});
 /** The reply to a request to stop a process. */
 export const processKillOutputSchema = z.lazy(() =>
   z.strictObject({
