@@ -1,5 +1,13 @@
 # @fungi.computer/computer-contract
 
+## 0.2.0
+
+### Minor Changes
+
+- Changes since 0.1.0:
+
+  - feat(computer): say a command ended because the Computer went to sleep
+
 ## 0.1.0
 
 ### Minor Changes

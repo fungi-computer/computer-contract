@@ -735,6 +735,12 @@ export const computerProcessSchema = z.strictObject({
   startedAt: z.number().int(),
   /** When the Computer recorded the process as ended, or null while it runs. */
   endedAt: z.number().int().nullable(),
+  /**
+   * Why the Computer ended the process itself: "idle-sleep" means the Computer
+   * went to sleep after sitting idle and its running commands stopped with it
+   * (Keep awake prevents this). Null for any other exit and while it runs.
+   */
+  endedReason: z.literal("idle-sleep").nullable(),
 });
 /** One started process, as the Computer reports it. */
 export type ComputerProcess = z.output<typeof computerProcessSchema>;

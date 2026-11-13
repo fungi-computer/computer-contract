@@ -549,6 +549,7 @@ type ComputerExecutionHostPort = Readonly<{
     sync: "unknown" | "synced" | "pending";
     startedAt: number;
     endedAt: number | null;
+    endedReason: "idle-sleep" | null;
   }>;
   callAfterAcceptance: Promise<JSONType>;
 }>;
@@ -1580,6 +1581,7 @@ const computerProcessSchema: ZodObject<
     }>;
     startedAt: ZodNumber;
     endedAt: ZodNullable<ZodNumber>;
+    endedReason: ZodNullable<ZodLiteral<"idle-sleep">>;
   },
   $strict
 >;
@@ -1624,6 +1626,7 @@ const processListOutputSchema: ZodObject<
           }>;
           startedAt: ZodNumber;
           endedAt: ZodNullable<ZodNumber>;
+          endedReason: ZodNullable<ZodLiteral<"idle-sleep">>;
         },
         $strict
       >
@@ -1714,6 +1717,7 @@ const processLogsOutputSchema: ZodObject<
         }>;
         startedAt: ZodNumber;
         endedAt: ZodNullable<ZodNumber>;
+        endedReason: ZodNullable<ZodLiteral<"idle-sleep">>;
       },
       $strict
     >;
@@ -1763,6 +1767,7 @@ const processKillOutputSchema: ZodLazy<
           }>;
           startedAt: ZodNumber;
           endedAt: ZodNullable<ZodNumber>;
+          endedReason: ZodNullable<ZodLiteral<"idle-sleep">>;
         },
         $strict
       >;
