@@ -1,5 +1,17 @@
 # @fungi.computer/computer-contract
 
+## 0.3.0
+
+### Minor Changes
+
+- Changes since 0.2.0:
+
+  - feat(computer): add the files.move operation
+
+### Patch Changes
+
+- @fungi.computer/knapsack@0.4.10
+
 ## 0.2.0
 
 ### Minor Changes

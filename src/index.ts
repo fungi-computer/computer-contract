@@ -496,6 +496,45 @@ export const mkdirOutputSchema = z.strictObject({
   path: pathSchema,
 });
 
+/** A request to move or rename one file or directory. */
+export const moveInputSchema = z.strictObject({
+  /** The file or directory to move. */
+  from: pathSchema,
+  /** Where it goes. Nothing may exist there already. */
+  to: pathSchema,
+  /**
+   * Whether missing parent directories of `to` are created too. False when
+   * omitted.
+   */
+  createParents: z.boolean().default(false),
+});
+/** The reply to a committed move. */
+export const moveOutputSchema = z.strictObject({
+  /** Where the file or directory was. */
+  from: pathSchema,
+  /** Where the file or directory is now. */
+  to: pathSchema,
+});
+
+/** Why a move was refused. */
+export type ComputerFileMoveRefusal = "missing" | "exists" | "invalid";
+
+/** A move was refused and nothing changed. */
+export class ComputerFileMoveError extends Error {
+  constructor(
+    /**
+     * `missing`: the source or the destination's parent does not exist.
+     * `exists`: something is already at the destination.
+     * `invalid`: a directory cannot move into itself, and the root cannot move.
+     */
+    readonly reason: ComputerFileMoveRefusal,
+    detail: string,
+  ) {
+    super(`Files move refused: ${detail}`);
+    this.name = "ComputerFileMoveError";
+  }
+}
+
 /**
  * Host-owned idempotency key for one `exec` or `bash` tool invocation. The
  * host mints it once per invocation and keeps it across its own retries of that
@@ -958,6 +997,8 @@ export const computerOperationSchema = z.enum({
   "files.edit": "files.edit",
   /** Apply a patch to files. */
   "files.patch": "files.patch",
+  /** Move or rename one file or directory. */
+  "files.move": "files.move",
   /** Create a directory. */
   mkdir: "mkdir",
   /** Run a command in the Computer's container. */
@@ -1059,6 +1100,13 @@ export function computerCapabilities(): z.output<
       "Write one bounded UTF-8 file without creating its parent directory.",
       writeInputSchema,
       writeOutputSchema,
+    ),
+    capability(
+      "move",
+      "fileStore",
+      "Move or rename one file or directory on this Computer. Refused if the destination already exists or a directory would move into itself.",
+      moveInputSchema,
+      moveOutputSchema,
     ),
     capability(
       "bash",

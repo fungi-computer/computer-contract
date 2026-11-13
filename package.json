@@ -1,6 +1,6 @@
 {
   "name": "@fungi.computer/computer-contract",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": "Levi <levi@technomancy.dev>",
   "description": "Wire contract for one Fungi Computer's operations: discovery, files, commands, processes and ports",
   "type": "module",
@@ -24,7 +24,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "pnpm run clean && tsc -p tsconfig.build.json",
     "clean": "node --input-type=module --eval \"import { rm } from 'node:fs/promises'; await rm('dist', { recursive: true, force: true });\"",
-    "test": "node test/reserved-ports.test.mjs",
+    "test": "node test/reserved-ports.test.mjs && node test/move.test.mjs",
     "test:unit": "pnpm run test",
     "docs": "tsx ../../tooling/repository/src/docs/cli.ts check --root ../..",
     "docs:write": "tsx ../../tooling/repository/src/docs/cli.ts write --root ../..",

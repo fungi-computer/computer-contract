@@ -98,6 +98,53 @@ Error.constructor;
 
 ---
 
+### ComputerFileMoveError
+
+A move was refused and nothing changed.
+
+#### Extends
+
+- `Error`
+
+#### Constructors
+
+##### Constructor
+
+```ts
+new ComputerFileMoveError(reason, detail): ComputerFileMoveError;
+```
+
+###### Parameters
+
+| Parameter | Type                                                  | Description                                                                                                                                                                                    |
+| --------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reason`  | [`ComputerFileMoveRefusal`](#computerfilemoverefusal) | `missing`: the source or the destination's parent does not exist. `exists`: something is already at the destination. `invalid`: a directory cannot move into itself, and the root cannot move. |
+| `detail`  | `string`                                              | -                                                                                                                                                                                              |
+
+###### Returns
+
+[`ComputerFileMoveError`](#computerfilemoveerror)
+
+###### Overrides
+
+```ts
+Error.constructor;
+```
+
+#### Properties
+
+##### reason
+
+```ts
+readonly reason: ComputerFileMoveRefusal;
+```
+
+`missing`: the source or the destination's parent does not exist. `exists`:
+something is already at the destination. `invalid`: a directory cannot move into
+itself, and the root cannot move.
+
+---
+
 ### ComputerProcessNotFoundError
 
 No process with this id was started on this Computer.
@@ -369,6 +416,16 @@ type ComputerFileGrepInput = z.output<typeof grepInputSchema>;
 ```
 
 A request to search file contents.
+
+---
+
+### ComputerFileMoveRefusal
+
+```ts
+type ComputerFileMoveRefusal = "missing" | "exists" | "invalid";
+```
+
+Why a move was refused.
 
 ---
 
@@ -1298,6 +1355,39 @@ The reply to a directory creation.
 
 ---
 
+### moveInputSchema
+
+```ts
+const moveInputSchema: ZodObject<
+  {
+    from: ZodString;
+    to: ZodString;
+    createParents: ZodDefault<ZodBoolean>;
+  },
+  $strict
+>;
+```
+
+A request to move or rename one file or directory.
+
+---
+
+### moveOutputSchema
+
+```ts
+const moveOutputSchema: ZodObject<
+  {
+    from: ZodString;
+    to: ZodString;
+  },
+  $strict
+>;
+```
+
+The reply to a committed move.
+
+---
+
 ### computerRequestIdSchema
 
 ```ts
@@ -1884,6 +1974,7 @@ const computerOperationSchema: ZodEnum<{
   files.grep: "files.grep";
   files.edit: "files.edit";
   files.patch: "files.patch";
+  files.move: "files.move";
   mkdir: "mkdir";
   bash: "bash";
   exec: "exec";
