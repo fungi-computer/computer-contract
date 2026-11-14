@@ -1,5 +1,22 @@
 # @fungi.computer/computer-contract
 
+## 0.4.0
+
+### Minor Changes
+
+- Changes since 0.3.1:
+
+  - feat(shed): read process output on the Hub; say a long command's limit
+    plainly
+  - feat(computer): ten-minute commands and detached processes Agents can read,
+    wait on and stop
+  - feat(inkcap): review everything the Agent changed in one Changes view
+  - feat(agents): an Agent's instructions are AGENTS.md on its Home Computer
+
+### Patch Changes
+
+- @fungi.computer/knapsack@0.4.12
+
 ## 0.3.1
 
 ### Patch Changes

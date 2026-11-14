@@ -33,8 +33,19 @@ export const maximumCommandCharacters = 16 * 1_024;
 export const maximumStreamBytes = 64 * 1_024;
 /** Room inside the stream cap for the visible truncation marker. */
 export const truncationMarkerReserveBytes = 256;
-/** The bound for ordinary Computer commands; hosts own any admitted job budget. */
-export const maximumExecutionTimeMs = 120_000;
+/**
+ * The bound for one synchronous Computer command: ten minutes. Work that must
+ * outlive it starts as a process, which has no run-time bound of its own and
+ * lives within the Computer's awake window. Hosts own any admitted job budget.
+ */
+export const maximumExecutionTimeMs = 600_000;
+
+/**
+ * How long one Agent `execute` run may last: one synchronous command at its
+ * bound plus a minute for the script around it. Hosts set it as the run's
+ * `execution.timeoutMs`; below it, a ten-minute command would be cut short.
+ */
+export const agentCodeExecutionTimeoutMs = maximumExecutionTimeMs + 60_000;
 
 /** Host-owned policy, never supplied in a Computer request body. */
 export type ComputerExecutionBudget = Readonly<{
@@ -352,15 +363,18 @@ export const writeBytesInputSchema = readInputSchema;
 
 /**
  * A request to replace a file's contents only if they still equal what the
- * caller last saw.
+ * caller last saw, or, with `expectedContent` null, to create it only if it is
+ * still absent.
  */
 export const replaceInputSchema = z.strictObject({
   /** The file to replace. */
   path: pathSchema,
   /**
-   * The contents the caller last saw. A mismatch raises `ComputerFileConflict`.
+   * The contents the caller last saw, or null to create the file only when it
+   * does not exist. A mismatch, or a file that exists, raises
+   * `ComputerFileConflict`.
    */
-  expectedContent: fileContentSchema,
+  expectedContent: fileContentSchema.nullable(),
   /** The contents to store. */
   content: fileContentSchema,
 });
@@ -549,8 +563,45 @@ export function mintComputerRequestId(): ComputerRequestId {
   return computerRequestIdSchema.parse(replayKey());
 }
 
-/** Model-facing command input. It carries no request identity. */
-function executionInputSchema(budget: ComputerExecutionBudget) {
+/** A bound in words: whole minutes, else whole seconds. */
+function durationWords(milliseconds: number): string {
+  const minutes = milliseconds / 60_000;
+  if (Number.isInteger(minutes))
+    return `${String(minutes)} minute${minutes === 1 ? "" : "s"}`;
+  const seconds = Math.round(milliseconds / 1_000);
+  return `${String(seconds)} second${seconds === 1 ? "" : "s"}`;
+}
+
+/**
+ * What a person or model is told when a command asks to run past its bound:
+ * the bound, and the way to run longer work.
+ */
+export function commandTooLongMessage(budget: ComputerExecutionBudget): string {
+  return `A command can run for up to ${durationWords(budget.maximumTimeMs)}. For longer work, start it in the background with start_process and check on it with wait_process.`;
+}
+
+/** A command asked to run longer than its bound; the message names the bound and the way out. */
+export class ComputerCommandTooLongError extends Error {
+  constructor(budget: ComputerExecutionBudget) {
+    super(commandTooLongMessage(budget));
+    this.name = "ComputerCommandTooLongError";
+  }
+}
+
+/**
+ * Model-facing command input. It carries no request identity. `bounded: false`
+ * is the advertised form: the bound is stated in words, and
+ * `parseComputerExecInput` refuses past it with a typed error, so a generic
+ * schema-violation message never stands in for it.
+ */
+function executionInputSchema(budget: ComputerExecutionBudget, bounded = true) {
+  const timeout = z
+    .number()
+    .int()
+    .describe(
+      `Milliseconds the command may run, at most ${String(budget.maximumTimeMs)} (${durationWords(budget.maximumTimeMs)}); ten seconds when omitted. Use start_process for longer work.`,
+    )
+    .min(1);
   return z.strictObject({
     /** The shell command to run. */
     command: z.string().min(1).max(maximumCommandCharacters),
@@ -561,12 +612,10 @@ function executionInputSchema(budget: ComputerExecutionBudget) {
     /**
      * How long the command may run, in milliseconds. Ten seconds when omitted.
      */
-    timeoutMs: z
-      .number()
-      .int()
-      .min(1)
-      .max(budget.maximumTimeMs)
-      .default(10_000),
+    timeoutMs: (bounded
+      ? timeout.max(budget.maximumTimeMs, commandTooLongMessage(budget))
+      : timeout
+    ).default(10_000),
   });
 }
 /**
@@ -576,6 +625,34 @@ function executionInputSchema(budget: ComputerExecutionBudget) {
 export const execInputSchema = executionInputSchema(
   genericComputerExecutionBudget,
 );
+/** The same input as advertised to models: the timeout bound is described, not a schema limit. */
+const advertisedExecInputSchema = executionInputSchema(
+  genericComputerExecutionBudget,
+  false,
+);
+
+/**
+ * Parse a command's input against its budget. A timeout past the bound throws
+ * `ComputerCommandTooLongError`, identified by the schema issue's code and
+ * path; every other violation is the schema's own error.
+ */
+export function parseComputerExecInput(
+  input: unknown,
+  budget: ComputerExecutionBudget = genericComputerExecutionBudget,
+) {
+  const parsed = executionInputSchema(budget).safeParse(input);
+  if (parsed.success) return parsed.data;
+  if (
+    parsed.error.issues.some(
+      (issue) =>
+        issue.code === "too_big" &&
+        issue.path.length === 1 &&
+        issue.path[0] === "timeoutMs",
+    )
+  )
+    throw new ComputerCommandTooLongError(budget);
+  throw parsed.error;
+}
 
 /** Resource hosts select a budget only after admitting their job principal. */
 export function computerExecutionRequestSchema(
@@ -809,6 +886,20 @@ export const processLogsOutputSchema = z.strictObject({
     .max(maximumProcessLogLines),
   /** True when older output was dropped to stay within the retained bound. */
   truncated: z.boolean(),
+});
+/** Longest one `wait_process` call blocks; the caller asks again to keep waiting. */
+export const maximumProcessWaitMs = 600_000;
+/** Asks to wait for one process to exit, up to a bound. */
+export const processWaitInputSchema = z.strictObject({
+  /** The process to wait for. */
+  id: computerProcessIdSchema,
+  /** How long to wait, in milliseconds; thirty seconds when omitted. */
+  timeoutMs: z.number().int().min(1).max(maximumProcessWaitMs).default(30_000),
+});
+/** What a wait found: the process record and its retained output tail. */
+export const processWaitOutputSchema = processLogsOutputSchema.extend({
+  /** True when the wait ended at its bound with the process still running. */
+  timedOut: z.boolean(),
 });
 /** The reply to a request to stop a process. */
 export const processKillOutputSchema = z.lazy(() =>
@@ -1112,22 +1203,36 @@ export function computerCapabilities(): z.output<
       "bash",
       "runtime",
       "Run one bounded shell command in this Computer's Linux container, with node, npm and the programs installed there.",
-      execInputSchema,
+      advertisedExecInputSchema,
       computerToolResultSchema,
     ),
     capability(
       "exec",
       "runtime",
       "Run one bounded command in a lightweight Worker shell over this Computer's files. It has no node, npm or installed programs; use bash to run programs.",
-      execInputSchema,
+      advertisedExecInputSchema,
       computerToolResultSchema,
     ),
     capability(
       "start_process",
       "runtime",
-      "Start one long-running command, such as a dev server, in this Computer's container. Returns its durable process id.",
+      "Start one command detached in this Computer's container, such as a dev server or a build longer than ten minutes. It has no run-time limit but lives only while the Computer is awake. Returns its durable process id; read output with process_logs, wait with wait_process, stop with kill_process.",
       processStartToolInputSchema,
       computerProcessSchema,
+    ),
+    capability(
+      "process_logs",
+      "runtime",
+      "Read the retained tail of one started process's output, with its state and exit code. Output is kept after the process stops.",
+      processLogsInputSchema,
+      processLogsOutputSchema,
+    ),
+    capability(
+      "wait_process",
+      "runtime",
+      "Wait up to timeoutMs for one started process to exit, then return its state, exit code and output tail; timedOut is true if it is still running, so call again to keep waiting.",
+      processWaitInputSchema,
+      processWaitOutputSchema,
     ),
     capability(
       "list_processes",
@@ -1146,3 +1251,5 @@ export function computerCapabilities(): z.output<
   ]);
   return capabilities;
 }
+
+export * from "./git-changes.js";

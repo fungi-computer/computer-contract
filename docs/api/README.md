@@ -145,6 +145,41 @@ itself, and the root cannot move.
 
 ---
 
+### ComputerCommandTooLongError
+
+A command asked to run longer than its bound; the message names the bound and
+the way out.
+
+#### Extends
+
+- `Error`
+
+#### Constructors
+
+##### Constructor
+
+```ts
+new ComputerCommandTooLongError(budget): ComputerCommandTooLongError;
+```
+
+###### Parameters
+
+| Parameter | Type                                                  |
+| --------- | ----------------------------------------------------- |
+| `budget`  | [`ComputerExecutionBudget`](#computerexecutionbudget) |
+
+###### Returns
+
+[`ComputerCommandTooLongError`](#computercommandtoolongerror)
+
+###### Overrides
+
+```ts
+Error.constructor;
+```
+
+---
+
 ### ComputerProcessNotFoundError
 
 No process with this id was started on this Computer.
@@ -306,6 +341,26 @@ Error.constructor;
 ```
 
 ## Type Aliases
+
+### GitChangesOutput
+
+```ts
+type GitChangesOutput = z.output<typeof gitChangesOutputSchema>;
+```
+
+The working-tree changes of one repository, or the absence of one.
+
+---
+
+### GitChangedFile
+
+```ts
+type GitChangedFile = z.output<typeof gitChangedFileSchema>;
+```
+
+One changed file, named from the repository root.
+
+---
 
 ### ComputerExecutionBudget
 
@@ -667,6 +722,141 @@ The reply to a committed replacement.
 
 ## Variables
 
+### maximumGitChangeFiles
+
+```ts
+const maximumGitChangeFiles: 500 = 500;
+```
+
+The most changed files one reply names; a larger change set says it was cut.
+
+---
+
+### maximumGitChangePatchCharacters
+
+```ts
+const maximumGitChangePatchCharacters: 60000 = 60_000;
+```
+
+The most patch characters one reply carries.
+
+---
+
+### gitChangesInputSchema
+
+```ts
+const gitChangesInputSchema: ZodObject<
+  {
+    path: ZodDefault<ZodString>;
+  },
+  $strict
+>;
+```
+
+Asks for the working-tree changes of the Git repository holding one folder.
+
+---
+
+### gitChangeStatusSchema
+
+```ts
+const gitChangeStatusSchema: ZodEnum<{
+  added: "added";
+  modified: "modified";
+  deleted: "deleted";
+  renamed: "renamed";
+  untracked: "untracked";
+  conflicted: "conflicted";
+}>;
+```
+
+What changed for one file, as Git's status reports it.
+
+---
+
+### gitChangedFileSchema
+
+```ts
+const gitChangedFileSchema: ZodObject<
+  {
+    path: ZodString;
+    status: ZodEnum<{
+      added: "added";
+      modified: "modified";
+      deleted: "deleted";
+      renamed: "renamed";
+      untracked: "untracked";
+      conflicted: "conflicted";
+    }>;
+    renamedFrom: ZodOptional<ZodString>;
+  },
+  $strict
+>;
+```
+
+One changed file, named from the repository root.
+
+---
+
+### gitChangesOutputSchema
+
+```ts
+const gitChangesOutputSchema: ZodDiscriminatedUnion<
+  [
+    ZodObject<
+      {
+        kind: ZodLiteral<"not_repository">;
+      },
+      $strict
+    >,
+    ZodObject<
+      {
+        kind: ZodLiteral<"changes">;
+        root: ZodString;
+        branch: ZodNullable<ZodString>;
+        files: ZodArray<
+          ZodObject<
+            {
+              path: ZodString;
+              status: ZodEnum<{
+                added: "added";
+                modified: "modified";
+                deleted: "deleted";
+                renamed: "renamed";
+                untracked: "untracked";
+                conflicted: "conflicted";
+              }>;
+              renamedFrom: ZodOptional<ZodString>;
+            },
+            $strict
+          >
+        >;
+        patch: ZodString;
+        truncated: ZodBoolean;
+      },
+      $strict
+    >,
+  ],
+  "kind"
+>;
+```
+
+The working-tree changes of one repository, or the absence of one.
+
+---
+
+### gitChangesCommand
+
+```ts
+const gitChangesCommand: string;
+```
+
+The one command the Computer runs for a Changes read. It takes no arguments: the
+folder is the command's working directory, so no caller text reaches the shell.
+Records are NUL-separated so any file name round-trips.
+
+---
+
 ### attachedBackendIdSchema
 
 ```ts
@@ -744,10 +934,24 @@ Room inside the stream cap for the visible truncation marker.
 ### maximumExecutionTimeMs
 
 ```ts
-const maximumExecutionTimeMs: 120000 = 120_000;
+const maximumExecutionTimeMs: 600000 = 600_000;
 ```
 
-The bound for ordinary Computer commands; hosts own any admitted job budget.
+The bound for one synchronous Computer command: ten minutes. Work that must
+outlive it starts as a process, which has no run-time bound of its own and lives
+within the Computer's awake window. Hosts own any admitted job budget.
+
+---
+
+### agentCodeExecutionTimeoutMs
+
+```ts
+const agentCodeExecutionTimeoutMs: number;
+```
+
+How long one Agent `execute` run may last: one synchronous command at its bound
+plus a minute for the script around it. Hosts set it as the run's
+`execution.timeoutMs`; below it, a ten-minute command would be cut short.
 
 ---
 
@@ -1165,7 +1369,7 @@ Names the file for a binary write. The bytes travel as the request body.
 const replaceInputSchema: ZodObject<
   {
     path: ZodString;
-    expectedContent: ZodLazy<ZodString>;
+    expectedContent: ZodNullable<ZodLazy<ZodString>>;
     content: ZodLazy<ZodString>;
   },
   $strict
@@ -1173,7 +1377,8 @@ const replaceInputSchema: ZodObject<
 ```
 
 A request to replace a file's contents only if they still equal what the caller
-last saw.
+last saw, or, with `expectedContent` null, to create it only if it is still
+absent.
 
 ---
 
@@ -1822,6 +2027,89 @@ The last output lines a process wrote, with its record for state and exit code.
 
 ---
 
+### maximumProcessWaitMs
+
+```ts
+const maximumProcessWaitMs: 600000 = 600_000;
+```
+
+Longest one `wait_process` call blocks; the caller asks again to keep waiting.
+
+---
+
+### processWaitInputSchema
+
+```ts
+const processWaitInputSchema: ZodObject<
+  {
+    id: ZodLazy<
+      ZodString &
+        ZodType<
+          CairnId<"computer-process", "process", 1>,
+          string,
+          $ZodTypeInternals<CairnId<"computer-process", "process", 1>, string>
+        >
+    >;
+    timeoutMs: ZodDefault<ZodNumber>;
+  },
+  $strict
+>;
+```
+
+Asks to wait for one process to exit, up to a bound.
+
+---
+
+### processWaitOutputSchema
+
+```ts
+const processWaitOutputSchema: ZodObject<
+  {
+    process: ZodObject<
+      {
+        id: ZodLazy<
+          ZodString &
+            ZodType<
+              CairnId<"computer-process", "process", 1>,
+              string,
+              $ZodTypeInternals<
+                CairnId<"computer-process", "process", 1>,
+                string
+              >
+            >
+        >;
+        port: ZodNullable<ZodLazy<ZodNumber>>;
+        command: ZodString;
+        cwd: ZodNullable<ZodString>;
+        state: ZodEnum<{
+          running: "running";
+          exited: "exited";
+          uncertain: "uncertain";
+        }>;
+        exitCode: ZodNullable<ZodNumber>;
+        sync: ZodEnum<{
+          synced: "synced";
+          pending: "pending";
+          unknown: "unknown";
+        }>;
+        startedAt: ZodNumber;
+        endedAt: ZodNullable<ZodNumber>;
+        endedReason: ZodNullable<ZodLiteral<"idle-sleep">>;
+      },
+      $strict
+    >;
+    lines: ZodArray<ZodString>;
+    truncated: ZodBoolean;
+    timedOut: ZodBoolean;
+  },
+  $strict
+>;
+```
+
+What a wait found: the process record and its retained output tail.
+
+---
+
 ### processKillOutputSchema
 
 ```ts
@@ -2036,6 +2324,78 @@ mismatch.
 
 ## Functions
 
+### decodeGitChanges()
+
+```ts
+function decodeGitChanges(
+  output,
+  options,
+):
+  | {
+      kind: "not_repository";
+    }
+  | {
+      kind: "changes";
+      root: string;
+      branch: string | null;
+      files: object[];
+      patch: string;
+      truncated: boolean;
+    };
+```
+
+Decode `gitChangesCommand` output, already stripped of any execution truncation
+marker. Porcelain v2 with -z is Git's own machine format: `# branch.*` headers,
+`1`/`2`/`u` change records and `?` untracked records, with a rename's origin as
+the record after it.
+
+#### Parameters
+
+| Parameter | Type                                                          |
+| --------- | ------------------------------------------------------------- |
+| `output`  | `string`                                                      |
+| `options` | `Readonly`\<\{ `path`: `string`; `truncated`: `boolean`; \}\> |
+
+#### Returns
+
+##### Type Literal
+
+```ts
+{
+  kind: "not_repository";
+}
+```
+
+| Name   | Type               | Description                                  |
+| ------ | ------------------ | -------------------------------------------- |
+| `kind` | `"not_repository"` | The folder is not inside a Git working tree. |
+
+---
+
+##### Type Literal
+
+```ts
+{
+  kind: "changes";
+  root: string;
+  branch: string | null;
+  files: object[];
+  patch: string;
+  truncated: boolean;
+}
+```
+
+| Name        | Type               | Description                                                                    |
+| ----------- | ------------------ | ------------------------------------------------------------------------------ |
+| `kind`      | `"changes"`        | The folder is inside a Git working tree.                                       |
+| `root`      | `string`           | The Computer path of the repository root.                                      |
+| `branch`    | `string` \| `null` | The checked-out branch, or null on a detached head.                            |
+| `files`     | `object`[]         | Changed files, at most `maximumGitChangeFiles`.                                |
+| `patch`     | `string`           | One unified diff against the last commit; untracked files appear as additions. |
+| `truncated` | `boolean`          | True when the file list or patch was cut to its bound.                         |
+
+---
+
 ### isComputerReservedPort()
 
 ```ts
@@ -2089,6 +2449,55 @@ Mint the request ID for one host tool invocation.
 #### Returns
 
 `string`
+
+---
+
+### commandTooLongMessage()
+
+```ts
+function commandTooLongMessage(budget): string;
+```
+
+What a person or model is told when a command asks to run past its bound: the
+bound, and the way to run longer work.
+
+#### Parameters
+
+| Parameter | Type                                                  |
+| --------- | ----------------------------------------------------- |
+| `budget`  | [`ComputerExecutionBudget`](#computerexecutionbudget) |
+
+#### Returns
+
+`string`
+
+---
+
+### parseComputerExecInput()
+
+```ts
+function parseComputerExecInput(input, budget?): object;
+```
+
+Parse a command's input against its budget. A timeout past the bound throws
+`ComputerCommandTooLongError`, identified by the schema issue's code and path;
+every other violation is the schema's own error.
+
+#### Parameters
+
+| Parameter | Type                                                  | Default value                    |
+| --------- | ----------------------------------------------------- | -------------------------------- |
+| `input`   | `unknown`                                             | `undefined`                      |
+| `budget`  | [`ComputerExecutionBudget`](#computerexecutionbudget) | `genericComputerExecutionBudget` |
+
+#### Returns
+
+| Name        | Type     | Description                                                              |
+| ----------- | -------- | ------------------------------------------------------------------------ |
+| `command`   | `string` | The shell command to run.                                                |
+| `cwd?`      | `string` | The directory to run in. The Computer's default when omitted.            |
+| `backend?`  | `string` | An attached backend id; omitted routes by the Computer's default order.  |
+| `timeoutMs` | `number` | How long the command may run, in milliseconds. Ten seconds when omitted. |
 
 ---
 
