@@ -145,6 +145,52 @@ itself, and the root cannot move.
 
 ---
 
+### ComputerFileRemoveError
+
+A deletion was refused and nothing changed.
+
+#### Extends
+
+- `Error`
+
+#### Constructors
+
+##### Constructor
+
+```ts
+new ComputerFileRemoveError(reason, detail): ComputerFileRemoveError;
+```
+
+###### Parameters
+
+| Parameter | Type                                                      | Description                                                                                                    |
+| --------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `reason`  | [`ComputerFileRemoveRefusal`](#computerfileremoverefusal) | `missing`: nothing exists at the path. `invalid`: the path is a directory, which this operation never deletes. |
+| `detail`  | `string`                                                  | -                                                                                                              |
+
+###### Returns
+
+[`ComputerFileRemoveError`](#computerfileremoveerror)
+
+###### Overrides
+
+```ts
+Error.constructor;
+```
+
+#### Properties
+
+##### reason
+
+```ts
+readonly reason: ComputerFileRemoveRefusal;
+```
+
+`missing`: nothing exists at the path. `invalid`: the path is a directory, which
+this operation never deletes.
+
+---
+
 ### ComputerCommandTooLongError
 
 A command asked to run longer than its bound; the message names the bound and
@@ -481,6 +527,16 @@ type ComputerFileMoveRefusal = "missing" | "exists" | "invalid";
 ```
 
 Why a move was refused.
+
+---
+
+### ComputerFileRemoveRefusal
+
+```ts
+type ComputerFileRemoveRefusal = "missing" | "invalid";
+```
+
+Why a file deletion was refused.
 
 ---
 
@@ -1593,6 +1649,36 @@ The reply to a committed move.
 
 ---
 
+### removeInputSchema
+
+```ts
+const removeInputSchema: ZodObject<
+  {
+    path: ZodString;
+  },
+  $strict
+>;
+```
+
+A request to delete one file.
+
+---
+
+### removeOutputSchema
+
+```ts
+const removeOutputSchema: ZodObject<
+  {
+    path: ZodString;
+  },
+  $strict
+>;
+```
+
+The reply to a committed deletion.
+
+---
+
 ### computerRequestIdSchema
 
 ```ts
@@ -2263,6 +2349,7 @@ const computerOperationSchema: ZodEnum<{
   files.edit: "files.edit";
   files.patch: "files.patch";
   files.move: "files.move";
+  files.remove: "files.remove";
   mkdir: "mkdir";
   bash: "bash";
   exec: "exec";

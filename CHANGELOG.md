@@ -1,5 +1,14 @@
 # @fungi.computer/computer-contract
 
+## 0.5.0
+
+### Minor Changes
+
+- Changes since 0.4.1:
+
+  - fix(computer): keep files.remove out of the model-facing tool list
+  - feat(computer): add the files.remove operation for Media erase
+
 ## 0.4.1
 
 ### Patch Changes

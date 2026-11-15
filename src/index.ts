@@ -549,6 +549,35 @@ export class ComputerFileMoveError extends Error {
   }
 }
 
+/** A request to delete one file. */
+export const removeInputSchema = z.strictObject({
+  /** The file to delete. A directory is never deleted. */
+  path: pathSchema,
+});
+/** The reply to a committed deletion. */
+export const removeOutputSchema = z.strictObject({
+  /** The file that was deleted. */
+  path: pathSchema,
+});
+
+/** Why a file deletion was refused. */
+export type ComputerFileRemoveRefusal = "missing" | "invalid";
+
+/** A deletion was refused and nothing changed. */
+export class ComputerFileRemoveError extends Error {
+  constructor(
+    /**
+     * `missing`: nothing exists at the path.
+     * `invalid`: the path is a directory, which this operation never deletes.
+     */
+    readonly reason: ComputerFileRemoveRefusal,
+    detail: string,
+  ) {
+    super(`Files remove refused: ${detail}`);
+    this.name = "ComputerFileRemoveError";
+  }
+}
+
 /**
  * Host-owned idempotency key for one `exec` or `bash` tool invocation. The
  * host mints it once per invocation and keeps it across its own retries of that
@@ -1090,6 +1119,8 @@ export const computerOperationSchema = z.enum({
   "files.patch": "files.patch",
   /** Move or rename one file or directory. */
   "files.move": "files.move",
+  /** Delete one file. */
+  "files.remove": "files.remove",
   /** Create a directory. */
   mkdir: "mkdir",
   /** Run a command in the Computer's container. */
