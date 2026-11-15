@@ -20,23 +20,14 @@
     "LICENSE"
   ],
   "scripts": {
-    "lint": "eslint src test --max-warnings=0 && ../../node_modules/.bin/oxlint --config ../../oxlint.config.ts --deny-warnings src test",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "pnpm run clean && tsc -p tsconfig.build.json",
     "clean": "node --input-type=module --eval \"import { rm } from 'node:fs/promises'; await rm('dist', { recursive: true, force: true });\"",
-    "test": "node test/reserved-ports.test.mjs && node test/move.test.mjs && node test/git-changes.test.mjs && node test/execution-bounds.test.mjs",
-    "test:unit": "pnpm run test",
-    "docs": "tsx ../../tooling/repository/src/docs/cli.ts check --root ../..",
-    "docs:write": "tsx ../../tooling/repository/src/docs/cli.ts write --root ../..",
-    "pack": "mkdir -p ../../.botanical/computer-contract-pack && pnpm pack --pack-destination ../../.botanical/computer-contract-pack",
-    "smoke": "node test/stranger/runtime.mjs",
-    "stranger": "tsx ../../tooling/repository/src/artifacts/cli.ts --repo-root ../.. .",
-    "format:check": "node ../../tooling/repository/scripts/format-package-check.mjs",
-    "lint:anti-slop": "node ../../tooling/repository/scripts/lint-package-anti-slop.mjs"
+    "smoke": "node test/stranger/runtime.mjs"
   },
   "dependencies": {
-    "@fungi.computer/cairn": "workspace:*",
-    "@fungi.computer/knapsack": "workspace:*",
+    "@fungi.computer/cairn": "0.1.0",
+    "@fungi.computer/knapsack": "0.4.13",
     "zod": "4.4.3"
   },
   "devDependencies": {
