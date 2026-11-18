@@ -1,5 +1,52 @@
 # Computer Contract (`@fungi.computer/computer-contract`)
 
+Computer-contract is the shared definition of how to talk to a Fungi Computer:
+reading and writing files, running commands, and managing processes and ports.
+
+```mermaid
+flowchart LR
+  App[App or client] -->|decodes with| Contract[computer-contract]
+  Host[Computer host] -->|encodes with| Contract
+  Contract -.->|no runtime| Computer[computer package]
+```
+
+## Quick start
+
+Install it:
+
+```sh
+npm install @fungi.computer/computer-contract
+```
+
+```ts
+import {
+  pathSchema,
+  mintComputerRequestId,
+} from "@fungi.computer/computer-contract";
+
+const path = pathSchema.parse("/workspace/notes.md");
+const requestId = mintComputerRequestId();
+```
+
+## Common tasks
+
+### Check a path
+
+`pathSchema.parse` accepts only valid Computer paths. See the Quick start.
+
+### Mint a request ID
+
+`mintComputerRequestId` makes the replay key a command needs. See the Quick
+start.
+
+### Look up an operation's shape
+
+See [Core concepts](#core-concepts) and the API reference.
+
+## Reference
+
+### Overview
+
 The wire contract for one Fungi Computer: the Zod schemas and types for
 operation discovery, files, commands, processes and ports, shared by every host
 and client that talks to a Computer. It has no runtime of its own and does not
@@ -15,18 +62,6 @@ pnpm add @fungi.computer/computer-contract
 The package is ESM-only and has one entrypoint. It depends on
 `@fungi.computer/cairn` for request identifiers, `@fungi.computer/knapsack` for
 the shared file-patch schemas, and `zod`.
-
-## Quick start
-
-```ts
-import {
-  pathSchema,
-  mintComputerRequestId,
-} from "@fungi.computer/computer-contract";
-
-const path = pathSchema.parse("/workspace/notes.md");
-const requestId = mintComputerRequestId();
-```
 
 ## Core concepts
 
