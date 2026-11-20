@@ -1,5 +1,17 @@
 # @fungi.computer/computer-contract
 
+## 0.6.0
+
+### Minor Changes
+
+- Changes since 0.5.11:
+
+  - feat(computer): let an Agent declare services that survive sleep
+
+### Patch Changes
+
+- @fungi.computer/knapsack@0.4.24
+
 ## 0.5.11
 
 ### Patch Changes

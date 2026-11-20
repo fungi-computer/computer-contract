@@ -386,6 +386,68 @@ new ComputerFileTooLargeError(): ComputerFileTooLargeError;
 Error.constructor;
 ```
 
+---
+
+### ComputerServiceLimitError
+
+This Computer already declares the maximum number of services.
+
+#### Extends
+
+- `Error`
+
+#### Constructors
+
+##### Constructor
+
+```ts
+new ComputerServiceLimitError(): ComputerServiceLimitError;
+```
+
+###### Returns
+
+[`ComputerServiceLimitError`](#computerservicelimiterror)
+
+###### Overrides
+
+```ts
+Error.constructor;
+```
+
+---
+
+### ComputerServiceNotFoundError
+
+No service of this name is declared on this Computer.
+
+#### Extends
+
+- `Error`
+
+#### Constructors
+
+##### Constructor
+
+```ts
+new ComputerServiceNotFoundError(name): ComputerServiceNotFoundError;
+```
+
+###### Parameters
+
+| Parameter | Type     |
+| --------- | -------- |
+| `name`    | `string` |
+
+###### Returns
+
+[`ComputerServiceNotFoundError`](#computerservicenotfounderror)
+
+###### Overrides
+
+```ts
+Error.constructor;
+```
+
 ## Type Aliases
 
 ### GitChangesOutput
@@ -2369,6 +2431,260 @@ Public operation vocabulary; transport adapters map these to routes.
 
 ---
 
+### maximumComputerServices
+
+```ts
+const maximumComputerServices: 16 = 16;
+```
+
+At most this many declared services per Computer.
+
+---
+
+### maximumServiceEnvEntries
+
+```ts
+const maximumServiceEnvEntries: 32 = 32;
+```
+
+Most environment entries one service declares.
+
+---
+
+### computerServiceNameSchema
+
+```ts
+const computerServiceNameSchema: ZodString;
+```
+
+A lower-case label, unique per Computer, at most 32 characters.
+
+---
+
+### computerServiceDeclarationSchema
+
+```ts
+const computerServiceDeclarationSchema: ZodObject<
+  {
+    name: ZodString;
+    command: ZodString;
+    cwd: ZodOptional<ZodString>;
+    port: ZodOptional<ZodLazy<ZodNumber>>;
+    env: ZodOptional<ZodRecord<ZodString, ZodString>>;
+  },
+  $strict
+>;
+```
+
+A program a person or Agent declared once; the Computer starts it on every wake
+and restarts it when it exits. Environment values are plain text: a service
+never receives a grant, token or key.
+
+---
+
+### computerServiceSchema
+
+```ts
+const computerServiceSchema: ZodObject<
+  {
+    name: ZodString;
+    command: ZodString;
+    cwd: ZodOptional<ZodString>;
+    port: ZodOptional<ZodLazy<ZodNumber>>;
+    env: ZodOptional<ZodRecord<ZodString, ZodString>>;
+    enabled: ZodBoolean;
+    declaredBy: ZodString;
+    declaredAt: ZodNumber;
+    revision: ZodNumber;
+  },
+  $strict
+>;
+```
+
+One declared service as the Computer stores it.
+
+---
+
+### computerServiceStateSchema
+
+```ts
+const computerServiceStateSchema: ZodEnum<{
+  up: "up";
+  restarting: "restarting";
+  down: "down";
+  asleep: "asleep";
+}>;
+```
+
+Whether a declared service is running now; `asleep` means the Computer is.
+
+---
+
+### computerServiceStatusSchema
+
+```ts
+const computerServiceStatusSchema: ZodObject<
+  {
+    state: ZodEnum<{
+      up: "up";
+      restarting: "restarting";
+      down: "down";
+      asleep: "asleep";
+    }>;
+    pid: ZodOptional<ZodNumber>;
+    seconds: ZodOptional<ZodNumber>;
+  },
+  $strict
+>;
+```
+
+A service's live status, read on demand from the supervisor and never stored.
+
+---
+
+### computerServiceViewSchema
+
+```ts
+const computerServiceViewSchema: ZodObject<
+  {
+    name: ZodString;
+    command: ZodString;
+    cwd: ZodOptional<ZodString>;
+    port: ZodOptional<ZodLazy<ZodNumber>>;
+    env: ZodOptional<ZodRecord<ZodString, ZodString>>;
+    enabled: ZodBoolean;
+    declaredBy: ZodString;
+    declaredAt: ZodNumber;
+    revision: ZodNumber;
+    status: ZodObject<
+      {
+        state: ZodEnum<{
+          up: "up";
+          restarting: "restarting";
+          down: "down";
+          asleep: "asleep";
+        }>;
+        pid: ZodOptional<ZodNumber>;
+        seconds: ZodOptional<ZodNumber>;
+      },
+      $strict
+    >;
+  },
+  $strict
+>;
+```
+
+A declared service with its live status, as the tools and routes list it.
+
+---
+
+### serviceNameInputSchema
+
+```ts
+const serviceNameInputSchema: ZodObject<
+  {
+    name: ZodString;
+  },
+  $strict
+>;
+```
+
+Names one declared service.
+
+---
+
+### serviceLogsInputSchema
+
+```ts
+const serviceLogsInputSchema: ZodObject<
+  {
+    name: ZodString;
+    lines: ZodOptional<ZodNumber>;
+  },
+  $strict
+>;
+```
+
+Asks for the retained tail of one service's output.
+
+---
+
+### serviceLogsOutputSchema
+
+```ts
+const serviceLogsOutputSchema: ZodObject<
+  {
+    name: ZodString;
+    lines: ZodArray<ZodString>;
+    truncated: ZodBoolean;
+  },
+  $strict
+>;
+```
+
+The newest lines one service wrote, oldest first.
+
+---
+
+### serviceListOutputSchema
+
+```ts
+const serviceListOutputSchema: ZodObject<
+  {
+    services: ZodArray<
+      ZodObject<
+        {
+          name: ZodString;
+          command: ZodString;
+          cwd: ZodOptional<ZodString>;
+          port: ZodOptional<ZodLazy<ZodNumber>>;
+          env: ZodOptional<ZodRecord<ZodString, ZodString>>;
+          enabled: ZodBoolean;
+          declaredBy: ZodString;
+          declaredAt: ZodNumber;
+          revision: ZodNumber;
+          status: ZodObject<
+            {
+              state: ZodEnum<{
+                up: "up";
+                restarting: "restarting";
+                down: "down";
+                asleep: "asleep";
+              }>;
+              pid: ZodOptional<ZodNumber>;
+              seconds: ZodOptional<ZodNumber>;
+            },
+            $strict
+          >;
+        },
+        $strict
+      >
+    >;
+  },
+  $strict
+>;
+```
+
+Every declared service on this Computer, by name.
+
+---
+
+### serviceRemoveOutputSchema
+
+```ts
+const serviceRemoveOutputSchema: ZodObject<
+  {
+    name: ZodString;
+    removed: ZodLiteral<true>;
+  },
+  $strict
+>;
+```
+
+A declaration was removed.
+
+---
+
 ### patchInputSchema
 
 ```ts
@@ -2743,5 +3059,19 @@ function computerCapabilities(): object[];
 The operations every Computer advertises; static, so hosts can describe them
 without a call. Built on first read: deriving JSON Schema for every operation is
 real work that a Worker should not pay at startup.
+
+#### Returns
+
+---
+
+### computerServiceCapabilities()
+
+```ts
+function computerServiceCapabilities(): object[];
+```
+
+The Agent tools for declared services. A host advertises them only when it
+serves them, so they are not part of
+[computerCapabilities](#computercapabilities).
 
 #### Returns

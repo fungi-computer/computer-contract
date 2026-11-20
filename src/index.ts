@@ -1283,4 +1283,189 @@ export function computerCapabilities(): z.output<
   return capabilities;
 }
 
+/** At most this many declared services per Computer. */
+export const maximumComputerServices = 16;
+/** Most environment entries one service declares. */
+export const maximumServiceEnvEntries = 32;
+/** A lower-case label, unique per Computer, at most 32 characters. */
+export const computerServiceNameSchema = z
+  .string()
+  .regex(/^[a-z][a-z0-9-]{0,31}$/u);
+/**
+ * A program a person or Agent declared once; the Computer starts it on every
+ * wake and restarts it when it exits. Environment values are plain text: a
+ * service never receives a grant, token or key.
+ */
+export const computerServiceDeclarationSchema = z.strictObject({
+  /** The service's name, unique per Computer. */
+  name: computerServiceNameSchema,
+  /** The shell command that runs the service. */
+  command: z.string().min(1).max(maximumCommandCharacters),
+  /** The directory to run in; the Workspace root when omitted. */
+  cwd: pathSchema.optional(),
+  /** The container port the service serves, admitted for preview like a process port. */
+  port: computerPortSchema.optional(),
+  /** Plain, non-secret environment values. */
+  env: z
+    .record(
+      z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,63}$/u),
+      z.string().max(4_096),
+    )
+    .refine(
+      (env) => Object.keys(env).length <= maximumServiceEnvEntries,
+      `A service declares at most ${String(maximumServiceEnvEntries)} environment entries`,
+    )
+    .optional(),
+});
+/** One declared service as the Computer stores it. */
+export const computerServiceSchema = computerServiceDeclarationSchema.extend({
+  /** False means declared but stopped: it is not started on wake. */
+  enabled: z.boolean(),
+  /** Who declared or last changed it, as `owner:<id>` or `agent:<id>`. */
+  declaredBy: z.string().min(1).max(512),
+  /** When it was last declared, in milliseconds since the epoch. */
+  declaredAt: z.number().int().nonnegative(),
+  /** Counts declarations of this name, starting at one. */
+  revision: z.number().int().positive(),
+});
+/** This Computer already declares the maximum number of services. */
+export class ComputerServiceLimitError extends Error {
+  constructor() {
+    super(
+      `Computer can declare at most ${String(maximumComputerServices)} services`,
+    );
+    this.name = "ComputerServiceLimitError";
+  }
+}
+/** No service of this name is declared on this Computer. */
+export class ComputerServiceNotFoundError extends Error {
+  constructor(name: string) {
+    super(`Computer has no service named ${name}`);
+    this.name = "ComputerServiceNotFoundError";
+  }
+}
+
+/** Whether a declared service is running now; `asleep` means the Computer is. */
+export const computerServiceStateSchema = z.enum({
+  /** The supervisor reports the service running. */
+  up: "up",
+  /** It exited and the supervisor is about to start it again. */
+  restarting: "restarting",
+  /** It is stopped, declared but not running. */
+  down: "down",
+  /** The Computer is asleep, so nothing is running. */
+  asleep: "asleep",
+});
+/** A service's live status, read on demand from the supervisor and never stored. */
+export const computerServiceStatusSchema = z.strictObject({
+  /** Whether the service is running now. */
+  state: computerServiceStateSchema,
+  /** The service's process id while it is up. */
+  pid: z.number().int().positive().optional(),
+  /** Seconds in this state, when the supervisor reported it. */
+  seconds: z.number().int().nonnegative().optional(),
+});
+/** A declared service with its live status, as the tools and routes list it. */
+export const computerServiceViewSchema = computerServiceSchema.extend({
+  /** Its live status. */
+  status: computerServiceStatusSchema,
+});
+/** Names one declared service. */
+export const serviceNameInputSchema = z.strictObject({
+  /** The service to act on. */
+  name: computerServiceNameSchema,
+});
+/** Asks for the retained tail of one service's output. */
+export const serviceLogsInputSchema = serviceNameInputSchema.extend({
+  /** How many of the newest lines; the most the Computer keeps when omitted. */
+  lines: z.number().int().min(1).max(maximumProcessLogLines).optional(),
+});
+/** The newest lines one service wrote, oldest first. */
+export const serviceLogsOutputSchema = z.strictObject({
+  /** The service the lines belong to. */
+  name: computerServiceNameSchema,
+  /** The lines, oldest first. */
+  lines: z
+    .array(z.string().max(maximumProcessLogLineCharacters))
+    .max(maximumProcessLogLines),
+  /** True when older lines were cut. */
+  truncated: z.boolean(),
+});
+/** Every declared service on this Computer, by name. */
+export const serviceListOutputSchema = z.strictObject({
+  /** The declared services by name. */
+  services: z.array(computerServiceViewSchema).max(maximumComputerServices),
+});
+/** A declaration was removed. */
+export const serviceRemoveOutputSchema = z.strictObject({
+  /** The service that was removed. */
+  name: computerServiceNameSchema,
+  /** Always true: a removal either happens or is refused. */
+  removed: z.literal(true),
+});
+
+let serviceCapabilities:
+  z.output<typeof computerCapabilitiesSchema> | undefined;
+
+/**
+ * The Agent tools for declared services. A host advertises them only when it
+ * serves them, so they are not part of {@link computerCapabilities}.
+ */
+export function computerServiceCapabilities(): z.output<
+  typeof computerCapabilitiesSchema
+> {
+  serviceCapabilities ??= computerCapabilitiesSchema.parse([
+    capability(
+      "declare_service",
+      "runtime",
+      "Declare one program this Computer runs for you, such as a web server: it starts now if the Computer is awake, starts again on every wake, and restarts if it exits. Declaring a name again replaces it. Environment values are plain text, never secrets. Use start_process for one-off work.",
+      computerServiceDeclarationSchema,
+      computerServiceViewSchema,
+    ),
+    capability(
+      "list_services",
+      "runtime",
+      "List this Computer's declared services with their live status: up, restarting, down, or asleep when the Computer is asleep.",
+      z.strictObject({}),
+      serviceListOutputSchema,
+    ),
+    capability(
+      "service_logs",
+      "runtime",
+      "Read the newest lines one declared service wrote, oldest first. Output is kept while the Computer is awake.",
+      serviceLogsInputSchema,
+      serviceLogsOutputSchema,
+    ),
+    capability(
+      "stop_service",
+      "runtime",
+      "Stop one declared service and keep it declared: it is not started on wake until start_service.",
+      serviceNameInputSchema,
+      computerServiceViewSchema,
+    ),
+    capability(
+      "start_service",
+      "runtime",
+      "Start one declared service that was stopped; it runs on every wake again.",
+      serviceNameInputSchema,
+      computerServiceViewSchema,
+    ),
+    capability(
+      "restart_service",
+      "runtime",
+      "Restart one declared service now, starting it if it was stopped.",
+      serviceNameInputSchema,
+      computerServiceViewSchema,
+    ),
+    capability(
+      "remove_service",
+      "runtime",
+      "Stop one declared service and forget it, releasing its port.",
+      serviceNameInputSchema,
+      serviceRemoveOutputSchema,
+    ),
+  ]);
+  return serviceCapabilities;
+}
+
 export * from "./git-changes.js";
