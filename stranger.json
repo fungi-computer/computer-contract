@@ -2,6 +2,8 @@
   "expectedTarballFiles": [
     "package/LICENSE",
     "package/README.md",
+    "package/dist/git-changes.d.ts",
+    "package/dist/git-changes.js",
     "package/dist/index.d.ts",
     "package/dist/index.js",
     "package/docs/api/README.md",
