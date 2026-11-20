@@ -1,5 +1,14 @@
 # @fungi.computer/computer-contract
 
+## 0.5.11
+
+### Patch Changes
+
+- Changes since 0.5.10:
+
+  - fix(computer): keep line endings and split indexes in the changes read
+  - fix(computer): read changes without running the repository's git drivers
+
 ## 0.5.10
 
 ### Patch Changes

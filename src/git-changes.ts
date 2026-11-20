@@ -70,20 +70,62 @@ export type GitChangedFile = z.output<typeof gitChangedFileSchema>;
  * The one command the Computer runs for a Changes read. It takes no
  * arguments: the folder is the command's working directory, so no caller text
  * reaches the shell. Records are NUL-separated so any file name round-trips.
+ *
+ * A Changes read needs only file read, yet anyone who can write files can
+ * write the repository's config and attributes, and Git runs the filter, diff
+ * and fsmonitor commands those name. So Git reads the working tree through a
+ * throwaway Git directory whose config this command writes: the repository's
+ * objects, index (split or not), branch, excludes and line-ending settings,
+ * and no other config from it, the home config or the system config.
+ * Attributes then name drivers that do not exist, and Git applies only its
+ * built-in conversions. Submodules are not read, since Git would run inside
+ * each with that submodule's own config.
  */
-export const gitChangesCommand = [
-  "exec 2>/dev/null",
-  "[ \"$(git rev-parse --is-inside-work-tree)\" = true ] || { printf 'fungi:not-repository\\0'; exit 0; }",
-  "printf 'fungi:repository\\0'",
-  "git rev-parse --show-prefix | tr -d '\\n'; printf '\\0'",
-  'cd "$(git rev-parse --show-toplevel)" || exit 0',
-  "git -c core.fsmonitor=false -c core.quotepath=off status --porcelain=v2 --branch -z --untracked-files=all",
-  "printf 'fungi:patch\\0'",
-  "base=$(git rev-parse -q --verify HEAD || git hash-object -t tree /dev/null)",
-  'git -c core.fsmonitor=false diff --no-ext-diff --no-textconv --no-color --find-renames "$base"',
-  "git -c core.fsmonitor=false ls-files --others --exclude-standard -z | xargs -r -0 -n 1 git diff --no-index --no-ext-diff --no-textconv --no-color -- /dev/null",
-  "exit 0",
-].join("\n");
+export const gitChangesCommand = String.raw`exec 2>/dev/null
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_COMMON_DIR \
+  GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_CONFIG GIT_CONFIG_PARAMETERS GIT_CONFIG_COUNT \
+  GIT_EXTERNAL_DIFF GIT_ATTR_SOURCE
+export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_OPTIONAL_LOCKS=0 \
+  GIT_TERMINAL_PROMPT=0 GIT_NO_LAZY_FETCH=1
+[ "$(git rev-parse --is-inside-work-tree)" = true ] || { printf 'fungi:not-repository\0'; exit 0; }
+printf 'fungi:repository\0'
+git rev-parse --show-prefix | tr -d '\n'; printf '\0'
+top=$(git rev-parse --show-toplevel) && cd "$top" || exit 0
+index=$(git rev-parse --path-format=absolute --git-path index) || exit 0
+objects=$(git rev-parse --path-format=absolute --git-path objects) || exit 0
+exclude=$(git rev-parse --path-format=absolute --git-path info/exclude) || exit 0
+format=$(git rev-parse --show-object-format) || exit 0
+head=$(git rev-parse -q --verify HEAD)
+branch=$(git symbolic-ref -q HEAD)
+shadow=$(mktemp -d) || exit 0
+trap 'rm -rf "$shadow"' EXIT
+mkdir "$shadow/refs" "$shadow/info" || exit 0
+git config -f "$shadow/config" core.repositoryformatversion 1 || exit 0
+git config -f "$shadow/config" extensions.objectFormat "$format" || exit 0
+git config -f "$shadow/config" core.bare false || exit 0
+git config -f "$shadow/config" core.quotepath false || exit 0
+for key in core.filemode core.ignorecase core.symlinks core.precomposeunicode; do
+  value=$(git config --type=bool "$key") || continue
+  git config -f "$shadow/config" "$key" "$value" || exit 0
+done
+for key in core.autocrlf core.eol; do
+  value=$(git config "$key") || continue
+  git config -f "$shadow/config" "$key" "$value" || exit 0
+done
+gitdir=$(git rev-parse --absolute-git-dir) || exit 0
+for shared in "$gitdir"/sharedindex.*; do
+  [ ! -f "$shared" ] || ln -s "$shared" "$shadow/" || exit 0
+done
+[ ! -f "$exclude" ] || cp "$exclude" "$shadow/info/exclude" || exit 0
+if [ -n "$branch" ]; then printf 'ref: %s\n' "$branch"; else printf '%s\n' "$head"; fi >"$shadow/HEAD"
+export GIT_DIR="$shadow" GIT_WORK_TREE="$top" GIT_INDEX_FILE="$index" GIT_OBJECT_DIRECTORY="$objects"
+[ -z "$branch" ] || [ -z "$head" ] || git update-ref "$branch" "$head" || exit 0
+git status --porcelain=v2 --branch -z --untracked-files=all --ignore-submodules=all
+printf 'fungi:patch\0'
+base=$(git rev-parse -q --verify HEAD || git hash-object -t tree /dev/null)
+git diff --no-ext-diff --no-textconv --no-color --find-renames --ignore-submodules=all "$base"
+git ls-files --others --exclude-standard -z | xargs -r -0 -n 1 git diff --no-index --no-ext-diff --no-textconv --no-color -- /dev/null
+exit 0`;
 
 const patchRecord = "\0fungi:patch\0";
 

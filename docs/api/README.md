@@ -911,6 +911,15 @@ The one command the Computer runs for a Changes read. It takes no arguments: the
 folder is the command's working directory, so no caller text reaches the shell.
 Records are NUL-separated so any file name round-trips.
 
+A Changes read needs only file read, yet anyone who can write files can write
+the repository's config and attributes, and Git runs the filter, diff and
+fsmonitor commands those name. So Git reads the working tree through a throwaway
+Git directory whose config this command writes: the repository's objects, index
+(split or not), branch, excludes and line-ending settings, and no other config
+from it, the home config or the system config. Attributes then name drivers that
+do not exist, and Git applies only its built-in conversions. Submodules are not
+read, since Git would run inside each with that submodule's own config.
+
 ---
 
 ### attachedBackendIdSchema
