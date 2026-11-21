@@ -1,5 +1,16 @@
 # @fungi.computer/computer-contract
 
+## 0.6.4
+
+### Patch Changes
+
+- Changes since 0.6.3:
+
+  - fix(hub): preserve bodyless file door denials
+  - fix(hub): expose image read limits and named file failures
+
+- @fungi.computer/knapsack@0.4.27
+
 ## 0.6.3
 
 ### Patch Changes

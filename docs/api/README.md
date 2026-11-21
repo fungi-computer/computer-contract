@@ -373,8 +373,14 @@ The requested file bytes exceed the admitted read bound.
 ##### Constructor
 
 ```ts
-new ComputerFileTooLargeError(): ComputerFileTooLargeError;
+new ComputerFileTooLargeError(message?): ComputerFileTooLargeError;
 ```
+
+###### Parameters
+
+| Parameter | Type     | Default value                            |
+| --------- | -------- | ---------------------------------------- |
+| `message` | `string` | `"File exceeds the Computer read bound"` |
 
 ###### Returns
 

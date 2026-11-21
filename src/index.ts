@@ -1164,8 +1164,8 @@ export class ComputerFileRangeError extends Error {
 
 /** The requested file bytes exceed the admitted read bound. */
 export class ComputerFileTooLargeError extends Error {
-  constructor() {
-    super("File exceeds the Computer read bound");
+  constructor(message = "File exceeds the Computer read bound") {
+    super(message);
     this.name = "ComputerFileTooLargeError";
   }
 }
