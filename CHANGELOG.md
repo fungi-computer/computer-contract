@@ -1,5 +1,15 @@
 # @fungi.computer/computer-contract
 
+## 0.6.3
+
+### Patch Changes
+
+- Changes since 0.6.2:
+
+  - fix(computer): never echo a hosted runtime error and say a restarted command
+    may have run
+  - fix(computer): report why a command result is lost, not a bare unknown
+
 ## 0.6.2
 
 ### Patch Changes

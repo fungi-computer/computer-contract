@@ -768,6 +768,7 @@ type ComputerExecutionHostPort = Readonly<{
       stderr: string;
       truncated: false | object[];
     } | null;
+    cause?: string;
   }>;
   startProcessAfterAcceptance: Promise<{
     id: string & object;
@@ -2332,8 +2333,9 @@ const computerOperationStatusSchema: ZodEnum<{
 
 Where one command invocation stands: accepted, running, succeeded, failed,
 unknown (the outcome cannot be established, because the Computer restarted
-mid-command or the id has no record yet is still inside the admission window) or
-expired (no record, and older than the admission window).
+mid-command, the runtime lost the result of a command it may have started, or
+the id has no record yet is still inside the admission window) or expired (no
+record, and older than the admission window).
 
 ---
 
@@ -2365,6 +2367,7 @@ const computerOperationResultSchema: ZodObject<{
         totalBytes: ZodNumber;
      }, $strict>>]>;
   }, $strict>>;
+  cause: ZodExactOptional<ZodString>;
 }, $strict>;
 ```
 
@@ -2399,6 +2402,7 @@ const computerToolResultSchema: ZodObject<{
         totalBytes: ZodNumber;
      }, $strict>>]>;
   }, $strict>>;
+  cause: ZodExactOptional<ZodString>;
 }, $strict>;
 ```
 
@@ -3034,19 +3038,21 @@ Project one host operation result onto the model-facing tool result.
 
 #### Parameters
 
-| Parameter          | Type                                                                                                                                                                                                                                                                                                                     | Description                                                         |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
-| `result`           | \{ `requestId`: `string`; `status`: `"unknown"` \| `"failed"` \| `"running"` \| `"accepted"` \| `"succeeded"` \| `"expired"`; `output`: \| \{ `status`: `"completed"` \| `"failed"` \| `"cancelled"`; `exitCode`: `number`; `stdout`: `string`; `stderr`: `string`; `truncated`: `false` \| `object`[]; \} \| `null`; \} | -                                                                   |
-| `result.requestId` | `string`                                                                                                                                                                                                                                                                                                                 | The host's id for this invocation.                                  |
-| `result.status`    | `"unknown"` \| `"failed"` \| `"running"` \| `"accepted"` \| `"succeeded"` \| `"expired"`                                                                                                                                                                                                                                 | Where the invocation stands.                                        |
-| `result.output`    | \| \{ `status`: `"completed"` \| `"failed"` \| `"cancelled"`; `exitCode`: `number`; `stdout`: `string`; `stderr`: `string`; `truncated`: `false` \| `object`[]; \} \| `null`                                                                                                                                             | The command's output once known and still retained, otherwise null. |
+| Parameter          | Type                                                                                                                                                                                                                                                                                                                                         | Description                                                                                                                               |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `result`           | \{ `requestId`: `string`; `status`: `"unknown"` \| `"failed"` \| `"running"` \| `"accepted"` \| `"succeeded"` \| `"expired"`; `output`: \| \{ `status`: `"completed"` \| `"failed"` \| `"cancelled"`; `exitCode`: `number`; `stdout`: `string`; `stderr`: `string`; `truncated`: `false` \| `object`[]; \} \| `null`; `cause?`: `string`; \} | -                                                                                                                                         |
+| `result.requestId` | `string`                                                                                                                                                                                                                                                                                                                                     | The host's id for this invocation.                                                                                                        |
+| `result.status`    | `"unknown"` \| `"failed"` \| `"running"` \| `"accepted"` \| `"succeeded"` \| `"expired"`                                                                                                                                                                                                                                                     | Where the invocation stands.                                                                                                              |
+| `result.output`    | \| \{ `status`: `"completed"` \| `"failed"` \| `"cancelled"`; `exitCode`: `number`; `stdout`: `string`; `stderr`: `string`; `truncated`: `false` \| `object`[]; \} \| `null`                                                                                                                                                                 | The command's output once known and still retained, otherwise null.                                                                       |
+| `result.cause?`    | `string`                                                                                                                                                                                                                                                                                                                                     | Why the outcome is unknown. The cause is stored with the record, so a replay of the same id returns it until the record's output expires. |
 
 #### Returns
 
-| Name     | Type                                                                                                                                                                         | Default value                   | Description                                                         |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------- |
-| `status` | `"unknown"` \| `"failed"` \| `"running"` \| `"accepted"` \| `"succeeded"` \| `"expired"`                                                                                     | `computerOperationStatusSchema` | Where the invocation stands.                                        |
-| `output` | \| \{ `status`: `"completed"` \| `"failed"` \| `"cancelled"`; `exitCode`: `number`; `stdout`: `string`; `stderr`: `string`; `truncated`: `false` \| `object`[]; \} \| `null` | -                               | The command's output once known and still retained, otherwise null. |
+| Name     | Type                                                                                                                                                                         | Default value                   | Description                                                                                                                               |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `status` | `"unknown"` \| `"failed"` \| `"running"` \| `"accepted"` \| `"succeeded"` \| `"expired"`                                                                                     | `computerOperationStatusSchema` | Where the invocation stands.                                                                                                              |
+| `output` | \| \{ `status`: `"completed"` \| `"failed"` \| `"cancelled"`; `exitCode`: `number`; `stdout`: `string`; `stderr`: `string`; `truncated`: `false` \| `object`[]; \} \| `null` | -                               | The command's output once known and still retained, otherwise null.                                                                       |
+| `cause?` | `string`                                                                                                                                                                     | -                               | Why the outcome is unknown. The cause is stored with the record, so a replay of the same id returns it until the record's output expires. |
 
 ---
 

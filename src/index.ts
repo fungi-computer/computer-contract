@@ -1044,8 +1044,8 @@ export type ComputerExecutionHostPort = Readonly<{
 /**
  * Where one command invocation stands: accepted, running, succeeded, failed,
  * unknown (the outcome cannot be established, because the Computer restarted
- * mid-command or the id has no record yet is still inside the admission
- * window) or expired (no record, and older than the admission window).
+ * mid-command, the runtime lost the result of a command it may have started,
+ * or the id has no record yet is still inside the admission window) or expired (no record, and older than the admission window).
  */
 export const computerOperationStatusSchema = z.enum({
   /** The request id is recorded and the command has not started. */
@@ -1072,6 +1072,11 @@ export const computerOperationResultSchema = z.strictObject({
   status: computerOperationStatusSchema,
   /** The command's output once known and still retained, otherwise null. */
   output: execOutputSchema.nullable(),
+  /**
+   * Why the outcome is unknown. The cause is stored with the record, so a
+   * replay of the same id returns it until the record's output expires.
+   */
+  cause: z.string().exactOptional(),
 });
 /**
  * The durable status of one command invocation, for the host that owns its
@@ -1091,10 +1096,10 @@ export type ComputerToolResult = z.output<typeof computerToolResultSchema>;
 export function computerToolResult(
   result: ComputerOperationResult,
 ): ComputerToolResult {
-  return computerToolResultSchema.parse({
-    status: result.status,
-    output: result.output,
-  });
+  const projected = { status: result.status, output: result.output };
+  if (result.cause === undefined)
+    return computerToolResultSchema.parse(projected);
+  return computerToolResultSchema.parse({ ...projected, cause: result.cause });
 }
 
 /** Public operation vocabulary; transport adapters map these to routes. */

@@ -6,6 +6,7 @@ import {
   commandTooLongMessage,
   parseComputerExecInput,
   computerCapabilities,
+  computerToolResult,
   execInputSchema,
   maximumExecutionTimeMs,
   maximumProcessWaitMs,
@@ -88,3 +89,22 @@ for (const name of [
   assert.ok(names.includes(name), name);
 
 console.log("execution bounds ok");
+
+const unknownRequestId = "01a1fbf0-36b9-74e9-93d1-e0d29a1182f2";
+assert.deepEqual(
+  computerToolResult({
+    requestId: unknownRequestId,
+    status: "unknown",
+    output: null,
+    cause: "Error: socket closed",
+  }),
+  { status: "unknown", output: null, cause: "Error: socket closed" },
+);
+assert.deepEqual(
+  computerToolResult({
+    requestId: unknownRequestId,
+    status: "unknown",
+    output: null,
+  }),
+  { status: "unknown", output: null },
+);
