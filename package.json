@@ -1,6 +1,6 @@
 {
   "name": "@fungi.computer/computer-contract",
-  "version": "0.6.7",
+  "version": "0.6.8",
   "author": "Levi <levi@technomancy.dev>",
   "description": "Wire contract for one Fungi Computer's operations: discovery, files, commands, processes and ports",
   "type": "module",
@@ -26,8 +26,8 @@
     "smoke": "node test/stranger/runtime.mjs"
   },
   "dependencies": {
-    "@fungi.computer/cairn": "0.1.0",
-    "@fungi.computer/knapsack": "0.4.30",
+    "@fungi.computer/cairn": "0.1.1",
+    "@fungi.computer/knapsack": "0.4.31",
     "zod": "4.4.3"
   },
   "devDependencies": {
