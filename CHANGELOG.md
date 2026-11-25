@@ -1,5 +1,16 @@
 # @fungi.computer/computer-contract
 
+## 0.6.10
+
+### Patch Changes
+
+- Changes since 0.6.9:
+
+  - fix(files): say patch creates files and report a missing patch engine
+
+- Updated dependencies
+  - @fungi.computer/knapsack@0.4.33
+
 ## 0.6.9
 
 ### Patch Changes

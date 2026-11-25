@@ -2735,9 +2735,12 @@ const patchOutputSchema: z.ZodLazy<z.ZodUnion<readonly [z.ZodObject<{
   stdout: z.ZodString;
   stderr: z.ZodString;
   truncated: z.ZodUnion<readonly [z.ZodLiteral<false>, z.ZodArray<z.ZodObject<..., ...>>]>;
-  error: z.ZodObject<{
-     kind: z.ZodLiteral<"mismatch">;
-  }, z.core.$strict>;
+  error: z.ZodUnion<readonly [z.ZodObject<{
+     kind: ...;
+   }, z.core.$strict>, z.ZodObject<{
+     kind: ...;
+     reason: ...;
+  }, z.core.$strict>]>;
 }, z.core.$strict>]>>;
 ```
 
